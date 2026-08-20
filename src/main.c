@@ -1765,6 +1765,16 @@ INT_PTR CALLBACK DlgProc (
 			break;
 		}
 
+		case WM_CLOSE:
+		{
+			// Clicking the window close button hides the main window and keeps
+			// Mem Reduct running in the notification area. Explicit Exit commands
+			// still call DestroyWindow and terminate through WM_DESTROY below.
+			_r_wnd_toggle (hwnd, FALSE);
+
+			return TRUE;
+		}
+
 		case WM_DESTROY:
 		{
 			KillTimer (hwnd, UID);
