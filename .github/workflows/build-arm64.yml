@@ -19,10 +19,15 @@ jobs:
           path: routine
 
       - name: Build ARM64
-        shell: cmd
+        shell: pwsh
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64
-          msbuild memreduct\memreduct.sln /m /p:Configuration=Release /p:Platform=ARM64 /verbosity:minimal
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.ARM64 -property installationPath
+          if (-not $vs) { throw 'Visual Studio ARM64 C++ toolchain was not found' }
+          $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvarsall.bat'
+          if (-not (Test-Path $vcvars)) { throw "vcvarsall.bat was not found: $vcvars" }
+          cmd /c "call `"$vcvars`" amd64_arm64 && msbuild memreduct\memreduct.sln /m /p:Configuration=Release /p:Platform=ARM64 /verbosity:minimal"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Package ARM64 portable build
         shell: pwsh
