@@ -26,14 +26,7 @@ jobs:
           if (-not $vs) { throw 'Visual Studio ARM64 C++ toolchain was not found' }
           $vcvars = Join-Path $vs 'VC\Auxiliary\Build\vcvarsall.bat'
           if (-not (Test-Path $vcvars)) { throw "vcvarsall.bat was not found: $vcvars" }
-          $envDump = Join-Path $env:RUNNER_TEMP 'arm64-env.txt'
-          cmd /c "call `"$vcvars`" amd64_arm64 && set > `"$envDump`""
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Get-Content $envDump | ForEach-Object {
-            $parts = $_ -split '=', 2
-            if ($parts.Length -eq 2) { Set-Content -Path "env:$($parts[0])" -Value $parts[1] }
-          }
-          msbuild memreduct\memreduct.sln /m /p:Configuration=Release /p:Platform=ARM64 /verbosity:minimal
+          cmd /c "call `"$vcvars`" amd64_arm64 && msbuild memreduct\memreduct.sln /m /p:Configuration=Release /p:Platform=ARM64 /verbosity:minimal"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Package ARM64 portable build
