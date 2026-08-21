@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: henrypp/routine
-          ref: master
+          ref: 2f7ce6a
           path: routine
 
       - name: Build ARM64
