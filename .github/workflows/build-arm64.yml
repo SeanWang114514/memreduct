@@ -19,12 +19,6 @@ jobs:
           ref: master
           path: routine
 
-      - name: Pin compatible routine revision
-        shell: pwsh
-        run: |
-          git -C routine fetch --depth=1 origin 2f7ce6a
-          git -C routine checkout --detach FETCH_HEAD
-
       - name: Build ARM64
         shell: pwsh
         run: |
