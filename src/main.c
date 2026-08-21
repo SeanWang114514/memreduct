@@ -11,6 +11,66 @@
 #define APP_AUTORUN_KEY L"Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 #define APP_AUTORUN_COMMAND_SIZE 32768
 
+// Mount-manager definitions are not present in recent routine revisions.
+#ifndef MOUNTMGR_DEVICE_NAME
+#define MOUNTMGR_DEVICE_NAME L"\\Device\\MountPointManager"
+#endif
+#ifndef MOUNTMGR_IS_VOLUME_NAME
+#define MOUNTMGR_IS_VOLUME_NAME(us) ((us)->Length >= (sizeof (L"\\??\\Volume{") - sizeof (WCHAR)) && _wcsnicmp ((us)->Buffer, L"\\??\\Volume{", (sizeof (L"\\??\\Volume{") - sizeof (WCHAR)) / sizeof (WCHAR)) == 0)
+#endif
+#ifndef FILE_DEVICE_MOUNTMGR
+#define FILE_DEVICE_MOUNTMGR 0x0000006D
+#endif
+#ifndef _R_MEMREDUCT_MOUNTMGR_TYPES
+#define _R_MEMREDUCT_MOUNTMGR_TYPES
+typedef struct _MOUNTMGR_MOUNT_POINT
+{
+	ULONG SymbolicLinkNameOffset;
+	USHORT SymbolicLinkNameLength;
+	ULONG UniqueIdOffset;
+	USHORT UniqueIdLength;
+	ULONG DeviceNameOffset;
+	USHORT DeviceNameLength;
+} MOUNTMGR_MOUNT_POINT, *PMOUNTMGR_MOUNT_POINT;
+typedef struct _MOUNTMGR_MOUNT_POINTS
+{
+	ULONG Size;
+	ULONG NumberOfMountPoints;
+	MOUNTMGR_MOUNT_POINT MountPoints[1];
+} MOUNTMGR_MOUNT_POINTS, *PMOUNTMGR_MOUNT_POINTS;
+#endif
+#ifndef IOCTL_MOUNTMGR_QUERY_POINTS
+#define IOCTL_MOUNTMGR_QUERY_POINTS CTL_CODE (FILE_DEVICE_MOUNTMGR, 2, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#endif
+
+static NTSTATUS _app_getvolumemountpoints (
+	_Out_ PMOUNTMGR_MOUNT_POINTS *mount_points,
+	_In_ HANDLE device
+)
+{
+	ULONG returned;
+	PMOUNTMGR_MOUNT_POINTS buffer = _r_mem_allocate (0x10000);
+
+	if (!buffer)
+		return STATUS_INSUFFICIENT_RESOURCES;
+
+	if (!DeviceIoControl (device, IOCTL_MOUNTMGR_QUERY_POINTS, NULL, 0, buffer, 0x10000, &returned, NULL))
+	{
+		_r_mem_free (buffer);
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	*mount_points = buffer;
+	return STATUS_SUCCESS;
+}
+
+static NTSTATUS _app_flushfile (
+	_In_ HANDLE file
+)
+{
+	return FlushFileBuffers (file) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+}
+
 BOOLEAN _app_autorun_isenabled ()
 {
 	HKEY hkey;
@@ -303,7 +363,7 @@ NTSTATUS _app_flushvolumecache ()
 	if (!NT_SUCCESS (status))
 		return status;
 
-	status = _r_fs_getvolumemountpoints (&object_mountpoints, hdevice);
+	status = _app_getvolumemountpoints (&object_mountpoints, hdevice);
 
 	if (!NT_SUCCESS (status))
 		goto CleanupExit;
@@ -336,7 +396,7 @@ NTSTATUS _app_flushvolumecache ()
 
 			if (NT_SUCCESS (status))
 			{
-				status = _r_fs_flushfile (hvolume);
+				status = _app_flushfile (hvolume);
 
 				NtClose (hvolume);
 			}
