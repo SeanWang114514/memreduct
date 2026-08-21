@@ -8,6 +8,91 @@
 
 #include "resource.h"
 
+#define APP_AUTORUN_KEY L"Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+#define APP_AUTORUN_COMMAND_SIZE 32768
+
+BOOLEAN _app_autorun_isenabled ()
+{
+	HKEY hkey;
+	WCHAR command[APP_AUTORUN_COMMAND_SIZE] = {0};
+	WCHAR image_path[APP_AUTORUN_COMMAND_SIZE] = {0};
+	DWORD type = 0;
+	DWORD size = sizeof (command);
+	LPCWSTR value_name;
+	LPCWSTR command_path;
+	LPWSTR end_quote;
+	BOOLEAN result = FALSE;
+
+	if (RegOpenKeyExW (HKEY_CURRENT_USER, APP_AUTORUN_KEY, 0, KEY_QUERY_VALUE, &hkey) != ERROR_SUCCESS)
+		return FALSE;
+
+	value_name = _r_app_getname ();
+	if (RegQueryValueExW (hkey, value_name, NULL, &type, (PBYTE)command, &size) == ERROR_SUCCESS && type == REG_SZ && GetModuleFileNameW (NULL, image_path, RTL_NUMBER_OF (image_path)))
+	{
+		command_path = command;
+		if (*command_path == L'\"')
+		{
+			command_path++;
+			end_quote = wcschr ((LPWSTR)command_path, L'\"');
+			if (end_quote)
+				*end_quote = UNICODE_NULL;
+		}
+
+		result = _wcsicmp (command_path, image_path) == 0;
+	}
+
+	RegCloseKey (hkey);
+	return result;
+}
+
+BOOLEAN _app_autorun_enable (
+	_In_opt_ HWND hwnd,
+	_In_ BOOLEAN is_enable
+)
+{
+	HKEY hkey;
+	LONG error;
+	WCHAR image_path[APP_AUTORUN_COMMAND_SIZE] = {0};
+	WCHAR command[APP_AUTORUN_COMMAND_SIZE] = {0};
+	LPCWSTR value_name;
+
+	error = RegCreateKeyExW (HKEY_CURRENT_USER, APP_AUTORUN_KEY, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hkey, NULL);
+	if (error != ERROR_SUCCESS)
+		goto ErrorExit;
+
+	value_name = _r_app_getname ();
+	if (is_enable)
+	{
+		if (!GetModuleFileNameW (NULL, image_path, RTL_NUMBER_OF (image_path)))
+		{
+			RegCloseKey (hkey);
+			goto ErrorExit;
+		}
+
+		if (swprintf_s (command, RTL_NUMBER_OF (command), L"\"%s\" -minimized", image_path) < 0)
+		{
+			RegCloseKey (hkey);
+			goto ErrorExit;
+		}
+
+		error = RegSetValueExW (hkey, value_name, 0, REG_SZ, (const BYTE *)command, (DWORD)((wcslen (command) + 1) * sizeof (WCHAR)));
+	}
+	else
+	{
+		error = RegDeleteValueW (hkey, value_name);
+		if (error == ERROR_FILE_NOT_FOUND)
+			error = ERROR_SUCCESS;
+	}
+
+	RegCloseKey (hkey);
+
+ErrorExit:
+	if (error != ERROR_SUCCESS && hwnd)
+		_r_show_message (hwnd, MB_OK | MB_ICONSTOP, NULL, L"Could not configure autorun.");
+
+	return error == ERROR_SUCCESS;
+}
+
 STATIC_DATA config = {0};
 
 ULONG limits_arr[13] = {0};
@@ -876,7 +961,7 @@ INT_PTR CALLBACK SettingsProc (
 				case IDD_SETTINGS_GENERAL:
 				{
 					_r_button_setcheck (hwnd, IDC_ALWAYSONTOP_CHK, _r_config_getboolean (L"AlwaysOnTop", FALSE, NULL));
-					_r_button_setcheck (hwnd, IDC_LOADONSTARTUP_CHK, _r_autorun_isenabled ());
+					_r_button_setcheck (hwnd, IDC_LOADONSTARTUP_CHK, _app_autorun_isenabled ());
 					_r_button_setcheck (hwnd, IDC_STARTMINIMIZED_CHK, _r_config_getboolean (L"IsStartMinimized", FALSE, NULL));
 					_r_button_setcheck (hwnd, IDC_REDUCTCONFIRMATION_CHK, _r_config_getboolean (L"IsShowReductConfirmation", TRUE, NULL));
 
@@ -1433,9 +1518,9 @@ INT_PTR CALLBACK SettingsProc (
 				{
 					BOOLEAN is_enable = _r_button_ischecked (hwnd, ctrl_id);
 
-					_r_autorun_enable (hwnd, is_enable);
+					_app_autorun_enable (hwnd, is_enable);
 
-					is_enable = _r_autorun_isenabled ();
+					is_enable = _app_autorun_isenabled ();
 
 					_r_menu_checkitem (GetMenu (_r_app_gethwnd ()), IDM_LOADONSTARTUP_CHK, 0, MF_BYCOMMAND, is_enable);
 
@@ -1796,7 +1881,7 @@ INT_PTR CALLBACK DlgProc (
 			{
 				_r_menu_checkitem (hmenu, IDM_ALWAYSONTOP_CHK, 0, MF_BYCOMMAND, _r_config_getboolean (L"AlwaysOnTop", FALSE, NULL));
 				_r_menu_checkitem (hmenu, IDM_USEDARKTHEME, 0, MF_BYCOMMAND, _r_theme_isenabled ());
-				_r_menu_checkitem (hmenu, IDM_LOADONSTARTUP_CHK, 0, MF_BYCOMMAND, _r_autorun_isenabled ());
+				_r_menu_checkitem (hmenu, IDM_LOADONSTARTUP_CHK, 0, MF_BYCOMMAND, _app_autorun_isenabled ());
 				_r_menu_checkitem (hmenu, IDM_STARTMINIMIZED_CHK, 0, MF_BYCOMMAND, _r_config_getboolean (L"IsStartMinimized", FALSE, NULL));
 				_r_menu_checkitem (hmenu, IDM_REDUCTCONFIRMATION_CHK, 0, MF_BYCOMMAND, _r_config_getboolean (L"IsShowReductConfirmation", TRUE, NULL));
 				_r_menu_checkitem (hmenu, IDM_SKIPUACWARNING_CHK, 0, MF_BYCOMMAND, _r_skipuac_isenabled ());
@@ -2278,8 +2363,8 @@ INT_PTR CALLBACK DlgProc (
 
 				case IDM_LOADONSTARTUP_CHK:
 				{
-					_r_autorun_enable (hwnd, !_r_autorun_isenabled ());
-					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, _r_autorun_isenabled ());
+					_app_autorun_enable (hwnd, !_app_autorun_isenabled ());
+					_r_menu_checkitem (GetMenu (hwnd), ctrl_id, 0, MF_BYCOMMAND, _app_autorun_isenabled ());
 
 					break;
 				}
