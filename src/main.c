@@ -1888,10 +1888,33 @@ INT_PTR CALLBACK DlgProc (
 			break;
 		}
 
+		case WM_SYSCOMMAND:
+		{
+			// Minimize and the title-bar close button both go to the tray.
+			if ((wparam & 0xFFF0) == SC_MINIMIZE || (wparam & 0xFFF0) == SC_CLOSE)
+			{
+				ShowWindow (hwnd, SW_HIDE);
+				return TRUE;
+			}
+
+			break;
+		}
+
+		case WM_SIZE:
+		{
+			if (wparam == SIZE_MINIMIZED)
+			{
+				ShowWindow (hwnd, SW_HIDE);
+				return TRUE;
+			}
+
+			break;
+		}
+
 		case WM_CLOSE:
 		{
 			// Close button hides the window; tray Exit still destroys it.
-			_r_wnd_toggle (hwnd, FALSE);
+			ShowWindow (hwnd, SW_HIDE);
 			return TRUE;
 		}
 
