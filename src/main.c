@@ -2688,5 +2688,10 @@ INT APIENTRY wWinMain (
 	if (!hwnd)
 		return ERROR_APP_INIT_FAILURE;
 
+	// Autorun passes -minimized. Hide explicitly after initialization so the
+	// tray icon remains available even if the host startup show state is reset.
+	if (_r_sys_getopt (_r_sys_getcommandline (), L"minimized", NULL))
+		ShowWindow (hwnd, SW_HIDE);
+
 	return _r_wnd_message_callback (hwnd, MAKEINTRESOURCEW (IDA_MAIN));
 }
