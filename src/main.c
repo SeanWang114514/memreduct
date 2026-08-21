@@ -1685,7 +1685,7 @@ INT_PTR CALLBACK SettingsProc (
 
 					if (ChooseFontW (&cf))
 					{
-						_r_config_setfont (L"TrayFont", &logfont, dpi_value, NULL);
+						_r_config_setfont_ex (L"TrayFont", &logfont, dpi_value, NULL);
 
 						_app_setfontcontrol (hwnd, IDC_FONT, &logfont, dpi_value);
 
