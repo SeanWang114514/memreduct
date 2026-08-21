@@ -22,7 +22,7 @@ jobs:
       - name: Pin compatible routine revision
         shell: pwsh
         run: |
-          git -C routine fetch --depth=1 origin 2f7ce6a
+          git -C routine fetch --depth=1 origin 2f7ce6a228dbbaa7295b9635ab971d2768a0ae9b
           git -C routine checkout --detach FETCH_HEAD
 
       - name: Build ARM64
