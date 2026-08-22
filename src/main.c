@@ -2,6 +2,7 @@
 // Copyright (c) 2011-2025 Henry++
 
 #include "routine.h"
+#include <shellapi.h>
 
 #include "main.h"
 #include "rapp.h"
@@ -9,6 +10,42 @@
 #include "resource.h"
 
 STATIC_DATA config = {0};
+
+#define APP_TRAY_ID 1
+
+VOID _app_tray_create (_In_ HWND hwnd, _In_ HICON hicon)
+{
+	NOTIFYICONDATAW nid = {0};
+	nid.cbSize = sizeof (nid);
+	nid.hWnd = hwnd;
+	nid.uID = APP_TRAY_ID;
+	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+	nid.uCallbackMessage = RM_TRAYICON;
+	nid.hIcon = hicon;
+	_r_str_copy (nid.szTip, RTL_NUMBER_OF (nid.szTip), _r_app_getname ());
+	Shell_NotifyIconW (NIM_DELETE, &nid);
+	Shell_NotifyIconW (NIM_ADD, &nid);
+}
+
+VOID _app_tray_destroy (_In_ HWND hwnd)
+{
+	NOTIFYICONDATAW nid = {0};
+	nid.cbSize = sizeof (nid);
+	nid.hWnd = hwnd;
+	nid.uID = APP_TRAY_ID;
+	Shell_NotifyIconW (NIM_DELETE, &nid);
+}
+
+VOID _app_tray_seticon (_In_ HWND hwnd, _In_opt_ HICON hicon)
+{
+	NOTIFYICONDATAW nid = {0};
+	nid.cbSize = sizeof (nid);
+	nid.hWnd = hwnd;
+	nid.uID = APP_TRAY_ID;
+	nid.uFlags = NIF_ICON;
+	nid.hIcon = hicon;
+	Shell_NotifyIconW (NIM_MODIFY, &nid);
+}
 
 ULONG limits_arr[13] = {0};
 ULONG intervals_arr[13] = {0};
@@ -647,6 +684,9 @@ VOID CALLBACK _app_timercallback (
 
 		hicon = _app_iconcreate (config.ms_prev);
 	}
+
+	if (hicon)
+		_app_tray_seticon (hwnd, hicon);
 
 	_r_tray_setinfoformat (
 		hwnd,
@@ -1848,7 +1888,7 @@ INT_PTR CALLBACK DlgProc (
 		{
 			KillTimer (hwnd, UID);
 
-			_r_tray_destroy (hwnd, &GUID_TrayIcon);
+			_app_tray_destroy (hwnd);
 
 			PostQuitMessage (0);
 
@@ -1880,7 +1920,7 @@ INT_PTR CALLBACK DlgProc (
 
 			_app_iconinit (dpi_value);
 
-			_r_tray_create (hwnd, &GUID_TrayIcon, RM_TRAYICON, _app_iconcreate (0), _r_app_getname (), FALSE);
+			_app_tray_create (hwnd, _app_iconcreate (0));
 
 			_app_iconredraw (hwnd);
 
@@ -1903,7 +1943,7 @@ INT_PTR CALLBACK DlgProc (
 
 			_app_iconinit (dpi_value);
 
-			_r_tray_create (hwnd, &GUID_TrayIcon, RM_TRAYICON, _app_iconcreate (0), _r_app_getname (), FALSE);
+			_app_tray_create (hwnd, _app_iconcreate (0));
 
 			_app_iconredraw (hwnd);
 
