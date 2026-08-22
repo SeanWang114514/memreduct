@@ -1854,6 +1854,17 @@ INT_PTR CALLBACK DlgProc (
 			break;
 		}
 
+		case WM_NCLBUTTONDOWN:
+		{
+			if (wparam == HTCLOSE || wparam == HTMINBUTTON)
+			{
+				ShowWindow (hwnd, SW_HIDE);
+				return TRUE;
+			}
+
+			break;
+		}
+
 		case WM_SYSCOMMAND:
 		{
 			// Minimize and the title-bar close button both go to the tray.
