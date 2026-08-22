@@ -16,13 +16,16 @@ STATIC_DATA config = {0};
 VOID _app_tray_create (_In_ HWND hwnd, _In_ HICON hicon)
 {
 	NOTIFYICONDATAW nid = {0};
+
 	nid.cbSize = sizeof (nid);
 	nid.hWnd = hwnd;
 	nid.uID = APP_TRAY_ID;
-	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
+	nid.guidItem = GUID_TrayIcon;
 	nid.uCallbackMessage = RM_TRAYICON;
 	nid.hIcon = hicon;
 	_r_str_copy (nid.szTip, RTL_NUMBER_OF (nid.szTip), _r_app_getname ());
+
 	Shell_NotifyIconW (NIM_DELETE, &nid);
 	Shell_NotifyIconW (NIM_ADD, &nid);
 }
@@ -30,19 +33,24 @@ VOID _app_tray_create (_In_ HWND hwnd, _In_ HICON hicon)
 VOID _app_tray_destroy (_In_ HWND hwnd)
 {
 	NOTIFYICONDATAW nid = {0};
+
 	nid.cbSize = sizeof (nid);
 	nid.hWnd = hwnd;
 	nid.uID = APP_TRAY_ID;
+	nid.uFlags = NIF_GUID;
+	nid.guidItem = GUID_TrayIcon;
 	Shell_NotifyIconW (NIM_DELETE, &nid);
 }
 
-VOID _app_tray_seticon (_In_ HWND hwnd, _In_opt_ HICON hicon)
+VOID _app_tray_seticon (_In_ HWND hwnd, _In_ HICON hicon)
 {
 	NOTIFYICONDATAW nid = {0};
+
 	nid.cbSize = sizeof (nid);
 	nid.hWnd = hwnd;
 	nid.uID = APP_TRAY_ID;
-	nid.uFlags = NIF_ICON;
+	nid.uFlags = NIF_ICON | NIF_GUID;
+	nid.guidItem = GUID_TrayIcon;
 	nid.hIcon = hicon;
 	Shell_NotifyIconW (NIM_MODIFY, &nid);
 }
@@ -687,19 +695,6 @@ VOID CALLBACK _app_timercallback (
 
 	if (hicon)
 		_app_tray_seticon (hwnd, hicon);
-
-	_r_tray_setinfoformat (
-		hwnd,
-		&GUID_TrayIcon,
-		hicon,
-		L"%s: %" TEXT (PR_DOUBLE) L"%%\r\n%s: %" TEXT (PR_DOUBLE) L"%%\r\n%s: %" TEXT (PR_DOUBLE) L"%%",
-		_r_locale_getstring (IDS_GROUP_1),
-		mem_info.physical_memory.percent_f,
-		_r_locale_getstring (IDS_GROUP_2),
-		mem_info.page_file.percent_f,
-		_r_locale_getstring (IDS_GROUP_3),
-		mem_info.system_cache.percent_f
-	);
 
 	if (!_r_wnd_isvisible (hwnd, FALSE))
 		return;
@@ -1845,9 +1840,15 @@ INT_PTR CALLBACK DlgProc (
 	{
 		case WM_INITDIALOG:
 		{
+			LONG dpi_value;
+
 			_r_app_sethwnd (hwnd); // HACK!!!
 
 			_app_initialize (hwnd);
+
+			dpi_value = _r_dc_gettaskbardpi ();
+			_app_iconinit (dpi_value);
+			_app_tray_create (hwnd, _app_iconcreate (0));
 
 			SetTimer (hwnd, UID, TIMER, &_app_timercallback);
 
@@ -1931,8 +1932,6 @@ INT_PTR CALLBACK DlgProc (
 
 			_app_iconinit (dpi_value);
 
-			_app_tray_create (hwnd, _app_iconcreate (0));
-
 			_app_iconredraw (hwnd);
 
 			break;
@@ -1953,8 +1952,6 @@ INT_PTR CALLBACK DlgProc (
 			dpi_value = _r_dc_gettaskbardpi ();
 
 			_app_iconinit (dpi_value);
-
-			_app_tray_create (hwnd, _app_iconcreate (0));
 
 			_app_iconredraw (hwnd);
 
