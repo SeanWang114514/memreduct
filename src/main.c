@@ -27,7 +27,7 @@ VOID _app_tray_create (_In_ HWND hwnd, _In_ HICON hicon)
 
 	Shell_NotifyIconW (NIM_DELETE, &nid);
 	Shell_NotifyIconW (NIM_ADD, &nid);
-	nid.uVersion = NOTIFYICON_VERSION_3;
+	nid.uVersion = NOTIFYICON_VERSION_4;
 	Shell_NotifyIconW (NIM_SETVERSION, &nid);
 }
 
