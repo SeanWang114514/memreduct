@@ -1838,15 +1838,9 @@ INT_PTR CALLBACK DlgProc (
 	{
 		case WM_INITDIALOG:
 		{
-			LONG dpi_value;
-
 			_r_app_sethwnd (hwnd); // HACK!!!
 
 			_app_initialize (hwnd);
-
-			dpi_value = _r_dc_gettaskbardpi ();
-			_app_iconinit (dpi_value);
-			_app_tray_create (hwnd, _app_iconcreate (0));
 
 			SetTimer (hwnd, UID, TIMER, &_app_timercallback);
 
