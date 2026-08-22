@@ -20,14 +20,15 @@ VOID _app_tray_create (_In_ HWND hwnd, _In_ HICON hicon)
 	nid.cbSize = sizeof (nid);
 	nid.hWnd = hwnd;
 	nid.uID = APP_TRAY_ID;
-	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_GUID;
-	nid.guidItem = GUID_TrayIcon;
+	nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
 	nid.uCallbackMessage = RM_TRAYICON;
 	nid.hIcon = hicon;
 	_r_str_copy (nid.szTip, RTL_NUMBER_OF (nid.szTip), _r_app_getname ());
 
 	Shell_NotifyIconW (NIM_DELETE, &nid);
 	Shell_NotifyIconW (NIM_ADD, &nid);
+	nid.uVersion = NOTIFYICON_VERSION_3;
+	Shell_NotifyIconW (NIM_SETVERSION, &nid);
 }
 
 VOID _app_tray_destroy (_In_ HWND hwnd)
@@ -37,8 +38,6 @@ VOID _app_tray_destroy (_In_ HWND hwnd)
 	nid.cbSize = sizeof (nid);
 	nid.hWnd = hwnd;
 	nid.uID = APP_TRAY_ID;
-	nid.uFlags = NIF_GUID;
-	nid.guidItem = GUID_TrayIcon;
 	Shell_NotifyIconW (NIM_DELETE, &nid);
 }
 
@@ -49,8 +48,7 @@ VOID _app_tray_seticon (_In_ HWND hwnd, _In_ HICON hicon)
 	nid.cbSize = sizeof (nid);
 	nid.hWnd = hwnd;
 	nid.uID = APP_TRAY_ID;
-	nid.uFlags = NIF_ICON | NIF_GUID;
-	nid.guidItem = GUID_TrayIcon;
+	nid.uFlags = NIF_ICON;
 	nid.hIcon = hicon;
 	Shell_NotifyIconW (NIM_MODIFY, &nid);
 }
@@ -1931,7 +1929,7 @@ INT_PTR CALLBACK DlgProc (
 			dpi_value = _r_dc_gettaskbardpi ();
 
 			_app_iconinit (dpi_value);
-
+			_app_tray_create (hwnd, _app_iconcreate (0));
 			_app_iconredraw (hwnd);
 
 			break;
@@ -1952,7 +1950,7 @@ INT_PTR CALLBACK DlgProc (
 			dpi_value = _r_dc_gettaskbardpi ();
 
 			_app_iconinit (dpi_value);
-
+			_app_tray_create (hwnd, _app_iconcreate (0));
 			_app_iconredraw (hwnd);
 
 			break;
