@@ -1997,6 +1997,24 @@ NTSTATUS _r_autorun_enable (
 
 		status = _r_reg_setvalue (hkey, _r_app_getname (), REG_SZ, string->buffer, (ULONG)string->length + sizeof (UNICODE_NULL));
 
+		// Remove any StartupApproved "disabled" marker for this Run entry.
+		// Otherwise Explorer skips the app at logon even though the Run value
+		// exists (e.g. after the user once toggled it off in Task Manager or
+		// Settings > Startup apps).
+		{
+			HANDLE hstartup_key;
+			NTSTATUS startup_status;
+
+			startup_status = _r_reg_openkey (HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run", 0, KEY_WRITE, &hstartup_key);
+
+			if (NT_SUCCESS (startup_status))
+			{
+				_r_reg_deletevalue (hstartup_key, _r_app_getname ());
+
+				NtClose (hstartup_key);
+			}
+		}
+
 		_r_sys_registerrestart (FALSE);
 
 		_r_obj_dereference (string);

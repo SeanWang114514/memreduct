@@ -1,7 +1,33 @@
 # Mem Reduct 3.5.3 ARM64 单文件版交付报告（真机验证）
 
-日期：2026-08-25
+日期：2026-08-25（首次交付）/ 2026-08-26（开机自启二次修复）
 设备：Xiaomi Pad 5（Snapdragon 860）/ PHONE-P4U54VK7T / Windows 10 专业版 19045 (ARM64)
+
+## 2026-08-26 开机自启动二次修复（真实开机验证失败后的根因修复）
+
+用户反馈"设置里勾了开机自启、Windows 启动里也打开了，开机还是不启动"。逐项排查真机状态后发现**两个叠加问题**：
+
+### 问题 1：系统启动文件夹里有一个失效的快捷方式
+- `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\memreduct.exe - 快捷方式.lnk`
+- 目标指向 `C:\software\memreduct.exe`（**缺 `\memreduct\` 子目录**），文件不存在 → 每次开机静默失败。
+- 用户在任务管理器"启动"里看到的并启用的，正是这个坏快捷方式。
+- 处理：**已删除**（避免与 Run 键双开——程序无单实例保护，双开会出现两个托盘）。
+
+### 问题 2：应用自带的 Run 项被 Windows 启动审批标记为禁用
+- `HKCU\...\CurrentVersion\Run\Mem Reduct` 值存在且路径正确，但
+  `HKCU\...\Explorer\StartupApproved\Run\Mem Reduct` = `00 00 00 00 ...`（全零=禁用），
+  Explorer 登录时按审批标记**跳过**该启动项。
+- 处理：清除禁用标记（等同默认启用）。
+
+### 源码级根治（一劳永逸，任何机器都适用）
+- `build\routine\src\rapp.c` `_r_autorun_enable()`：勾选"开机自启"时，写完 Run 值后**同步删除**
+  `StartupApproved\Run\<应用名>` 禁用标记，避免 Windows 在下次登录时跳过。
+- **真机验证（通过真实 WM_COMMAND 菜单消息驱动）**：
+  1. 预置禁用标记 `03 00 00 00 + FILETIME`
+  2. 向主窗口发 `IDM_LOADONSTARTUP_CHK`(158) 关 → Run 值被删除 ✓
+  3. 再发 158 开 → Run 值重建为 `"C:\software\memreduct\memreduct.exe" -minimized` ✓
+  4. **禁用标记被应用自动清除（自愈生效）** ✓
+- 当前二进制 SHA256：`03CC98775CA66171037AE5A37958355BD76A8925B6644690F3A6F555020E7FC3`
 
 ## 交付物
 
@@ -59,6 +85,7 @@
 2. `build\memreduct\src\main.h`：TITLE_* 宏中文化（工作集、系统文件缓存、备用列表等 8 项），文件保存为 UTF-8 with BOM。
 3. `build\memreduct\src\resource.h`：新增 `#define IDS_UPDATE_AUTOINSTALL 91`。
 4. `build\memreduct\memreduct.vcxproj`：所有 ClCompile 增加 `/utf-8` 编译选项（中文字符串正确编译）。
+5. `build\routine\src\rapp.c`（2026-08-26）：`_r_autorun_enable()` 勾选开机自启时同步清除 `StartupApproved\Run` 禁用标记（自愈，防止 Explorer 登录时跳过）。
 
 ## 部署状态
 
