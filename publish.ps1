@@ -25,7 +25,7 @@ param(
     [int]$MaxRetry = 5
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $Repo = "$RepoOwner/$RepoName"
 $LogFile = Join-Path $DeliverableDir "publish.log"
 
@@ -64,7 +64,7 @@ Log "版本标签: $VersionTag"
 # ------- 3. 确保 repo 是最新 ----
 Log "-------------------------"
 Log "同步仓库..."
-git -C $RepoDir fetch origin 2>&1 | Out-Null
+git -C $RepoDir fetch origin 2>$null | Out-Null
 git -C $RepoDir reset --hard origin/arm64-zh 2>$null
 Log "仓库已同步到 origin/arm64-zh"
 
@@ -91,7 +91,7 @@ Log "推送到 GitHub..."
 $pushed = $false
 for ($i = 1; $i -le $MaxRetry -and -not $pushed; $i++) {
     Log "  push 尝试 $i/$MaxRetry ..."
-    $out = git -C $RepoDir push origin arm64-zh 2>&1
+    $out = git -C $RepoDir push origin arm64-zh 2>$null
     if ($LASTEXITCODE -eq 0) {
         $pushed = $true
         Log "  push 成功"
@@ -151,7 +151,7 @@ if ($existingRelease) {
 
 # 上传资产
 Log "上传 memreduct.exe..."
-gh release upload $VersionTag $assetPath -R $Repo --clobber 2>&1 | Out-Null
+gh release upload $VersionTag $assetPath -R $Repo --clobber 2>$null | Out-Null
 Start-Sleep -Seconds 2
 
 # ------- 8. 打本地 git tag ----
