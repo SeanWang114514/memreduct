@@ -1,0 +1,22 @@
+# build artifacts
+*.obj
+*.pdb
+*.ilk
+*.res
+*.tlog
+bin/ARM64/
+bin/x64/
+bin/Win32/
+Debug/
+Release/
+x64/
+ARM64/
+
+# test leftovers
+test/run/
+*.log
+*.tmp
+
+# system
+Thumbs.db
+Desktop.ini
