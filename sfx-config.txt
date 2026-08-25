@@ -1,4 +1,0 @@
-;!@Install@!UTF-8!
-Title="Mem Reduct 3.5.3 ARM64"
-RunProgram="memreduct.exe"
-;!@InstallEnd@!

@@ -1,4 +1,4 @@
-// Mem Reduct
+﻿// Mem Reduct
 // Copyright (c) 2011-2025 Henry++
 
 #pragma once
@@ -10,14 +10,14 @@
 
 DEFINE_GUID (GUID_TrayIcon, 0xAE9053F0, 0x8D59, 0x4803, 0x9A, 0xBB, 0x74, 0xAF, 0xE6, 0x6B, 0x5F, 0xD2);
 
-#define TITLE_WORKINGSET L"Working set"
-#define TITLE_SYSTEMFILECACHE L"System file cache"
-#define TITLE_STANDBYLISTPRIORITY0 L"Standby list (without priority)"
-#define TITLE_STANDBYLIST L"Standby list*"
-#define TITLE_MODIFIEDLIST L"Modified page list*"
-#define TITLE_MODIFIEDFILECACHE L"Modified file cache"
-#define TITLE_REGISTRYCACHE L"Registry cache (win8.1+)"
-#define TITLE_COMBINEMEMORYLISTS L"Combine memory lists (win10+)"
+#define TITLE_WORKINGSET L"工作集"
+#define TITLE_SYSTEMFILECACHE L"系统文件缓存"
+#define TITLE_STANDBYLISTPRIORITY0 L"备用列表（无优先级）"
+#define TITLE_STANDBYLIST L"备用列表*"
+#define TITLE_MODIFIEDLIST L"已修改页面列表*"
+#define TITLE_MODIFIEDFILECACHE L"已修改文件缓存"
+#define TITLE_REGISTRYCACHE L"注册表缓存 (win8.1+)"
+#define TITLE_COMBINEMEMORYLISTS L"合并内存列表 (win10+)"
 
 #define TIMER 1000
 #define UID 1337
