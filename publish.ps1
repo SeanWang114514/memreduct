@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Mem Reduct ARM64 一键发布脚本
 .DESCRIPTION
@@ -10,9 +10,9 @@
     5. 验证最终状态
 
     用法: .\publish.ps1 [-VersionTag "v3.5.3-arm64-zh"] [-ExePath "path\to\memreduct.exe"]
-    
+
     默认 VersionTag 从仓库中读取最新 tag 并递增补丁号。
-    默认 ExePath 为 C:\Vibe Coding\memreduct移植\build\memreduct\bin\ARM64\memreduct.exe
+    默认 ExePath 为构建目录下的 memreduct.exe。
 #>
 
 param(
@@ -29,7 +29,11 @@ $ErrorActionPreference = "Stop"
 $Repo = "$RepoOwner/$RepoName"
 $LogFile = Join-Path $DeliverableDir "publish.log"
 
-function Log { param([string]$m) $ts = Get-Date -Format "HH:mm:ss"; "$ts $m" | Tee-Object -FilePath $LogFile -Append | Write-Host }
+function Log {
+    param([string]$m)
+    $ts = Get-Date -Format "HH:mm:ss"
+    "$ts $m" | Tee-Object -FilePath $LogFile -Append | Write-Host
+}
 
 # ------- 1. 确定 exe 路径 -------
 if (-not $ExePath) {
@@ -65,7 +69,7 @@ git -C $RepoDir reset --hard origin/arm64-zh 2>$null
 Log "仓库已同步到 origin/arm64-zh"
 
 # ------- 4. 复制 exe 到 repo ----
-$assetDir = Join-Path $RepoDir "release"
+$assetDir = Join-Path $RepoDir "deliverable"
 New-Item -ItemType Directory -Path $assetDir -Force | Out-Null
 $assetPath = Join-Path $assetDir "memreduct.exe"
 Copy-Item $ExePath $assetPath -Force
@@ -73,11 +77,11 @@ $repoHash = (Get-FileHash $assetPath -Algorithm SHA256).Hash
 Log "资产已复制到: $assetPath"
 if ($repoHash -ne $exeHash) { Log "警告: 哈希不匹配!"; exit 1 }
 
-# ------- 5. 更新 README（可选：版本号） ----
+# ------- 5. git add/commit ----
 Log "-------------------------"
 Log "git add/commit..."
 git -C $RepoDir add -A
-$commitMsg = "Mem Reduct ARM64 单文件版 ($VersionTag)`n`nSHA256: $exeHash`n大小: $($exeInfo.Length) B"
+$commitMsg = "Mem Reduct ARM64 单文件版 ($VersionTag)"
 git -C $RepoDir commit -m $commitMsg 2>$null
 Log "提交完成"
 
@@ -98,9 +102,6 @@ for ($i = 1; $i -le $MaxRetry -and -not $pushed; $i++) {
 }
 if (-not $pushed) { Log "push 失败已达最大重试次数"; exit 1 }
 
-# 同步 tag
-git -C $RepoDir push origin --tags 2>$null
-
 # ------- 7. 创建/更新 Release + 上传资产 ----
 Log "-------------------------"
 Log "检查 Release 是否存在..."
@@ -113,31 +114,36 @@ if ($existingRelease) {
     Log "Release 已存在，删除旧资产并更新..."
     $assets = gh release view $VersionTag -R $Repo --json assets 2>$null | ConvertFrom-Json | Select-Object -ExpandProperty assets
     foreach ($a in $assets) {
-        if ($a.name -eq 'memreduct.exe') {
-            gh release delete-asset $VersionTag $a.name -R $Repo --yes 2>$null
-            Log "  已删除旧 memreduct.exe (id=$($a.id))"
-        } else {
-            gh release delete-asset $VersionTag $a.name -R $Repo --yes 2>$null
-            Log "  已删除旧资产: $($a.name)"
-        }
+        gh release delete-asset $VersionTag $a.name -R $Repo --yes 2>$null
+        Log "  已删除旧资产: $($a.name)"
     }
     Start-Sleep -Seconds 2
 } else {
     Log "创建新 Release..."
-    $releaseNotes = "## Mem Reduct ARM64 单文件中文版 ($VersionTag)`n`n" +
-                    "### 文件`n" +
-                    "- \`memreduct.exe\`（$($exeInfo.Length) B，SHA256: \`$exeHash\`）`n`n" +
-                    "### 特点`n" +
-                    "- 真正的单文件（无 7-Zip SFX 外壳）`n" +
-                    "- 中文已编译进 exe 资源（无需 lng 文件）`n" +
-                    "- 开机自启（Run 键 + 计划任务提权）`n" +
-                    "- 最小化/关闭隐藏到托盘，进程常驻`n" +
-                    "- 清理内存按钮真实工作`n" +
-                    "- 设置持久化保存（固定路径 ini）`n" +
-                    "- 托盘图标（NIF_GUID 回退 uID）`n`n" +
-                    "### 真机验证`n" +
-                    "已在小米平板 5（Snapdragon 860, Win10 19045 ARM64）逐项实测通过。"
-    gh release create $VersionTag -R $Repo --title "Mem Reduct ARM64 单文件版" --notes $releaseNotes 2>$null
+
+    $notesLines = @(
+        "## Mem Reduct ARM64 单文件中文版 ($VersionTag)",
+        "",
+        "### 文件",
+        "- memreduct.exe（$($exeInfo.Length) B，SHA256: $exeHash）",
+        "",
+        "### 特点",
+        "- 真正的单文件（无 7-Zip SFX 外壳）",
+        "- 中文已编译进 exe 资源（无需 lng 文件）",
+        "- 开机自启（Run 键 + 计划任务提权）",
+        "- 最小化/关闭隐藏到托盘，进程常驻",
+        "- 清理内存按钮真实工作",
+        "- 设置持久化保存（固定路径 ini）",
+        "- 托盘图标（NIF_GUID 回退 uID）",
+        "",
+        "### 真机验证",
+        "已在小米平板 5（Snapdragon 860, Win10 19045 ARM64）逐项实测通过。"
+    )
+    $releaseNotes = $notesLines -join "`n"
+    $notesFile = Join-Path $DeliverableDir "release-notes.md"
+    [System.IO.File]::WriteAllText($notesFile, $releaseNotes, (New-Object System.Text.UTF8Encoding($true)))
+
+    gh release create $VersionTag -R $Repo --title "Mem Reduct ARM64 单文件版" --notes-file $notesFile 2>$null
     Log "Release 已创建"
     Start-Sleep -Seconds 3
 }
@@ -159,7 +165,6 @@ $final = gh release view $VersionTag -R $Repo --json assets 2>$null | ConvertFro
 Log "Release 最终资产:"
 $final | ForEach-Object { Log "  $($_.name) ($($_.size) B, sha256: $($_.digest.Substring(7,64)))" }
 
-# 验证下载数
 $downloaded = $final | Where-Object { $_.name -eq 'memreduct.exe' } | Select-Object -ExpandProperty downloadCount
 Log "下载次数: $downloaded"
 
